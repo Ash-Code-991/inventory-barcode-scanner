@@ -1,0 +1,70 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Inventory Barcode Scanner</title>
+  <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
+  <style>
+    body { font-family: Arial; text-align: center; padding: 20px; }
+    video { width: 100%; max-width: 500px; }
+    button { padding: 14px 22px; margin: 10px; }
+  </style>
+</head>
+<body>
+  <h2>Scan Product Barcode</h2>
+  <p id="status">Tap Start Scanner and allow camera access.</p>
+  <video id="video" playsinline muted></video>
+  <br>
+  <button id="start">Start Scanner</button>
+  <button id="stop">Stop Scanner</button>
+
+  <script>
+    let reader;
+
+    document.getElementById("start").onclick = async () => {
+      try {
+        reader = new ZXing.BrowserMultiFormatReader();
+        document.getElementById("status").textContent =
+          "Opening camera. Hold the barcode steady.";
+
+        await reader.decodeFromVideoDevice(
+          undefined,
+          "video",
+          (result, error) => {
+            if (!result) return;
+
+            const code = result.getText();
+            document.getElementById("status").textContent =
+              "Scanned: " + code;
+
+            reader.reset();
+            reader = null;
+
+            if (window.opener) {
+              window.opener.postMessage({
+                type: "INVENTORY_BARCODE",
+                code: code
+              }, "*");
+              document.getElementById("status").textContent =
+                "Barcode sent to inventory app.";
+            } else {
+              document.getElementById("status").textContent =
+                "No inventory app connected. Open this scanner from the app.";
+            }
+          }
+        );
+      } catch (e) {
+        document.getElementById("status").textContent =
+          "Camera error: " + e.message;
+      }
+    };
+
+    document.getElementById("stop").onclick = () => {
+      if (reader) reader.reset();
+      reader = null;
+      document.getElementById("status").textContent = "Scanner stopped.";
+    };
+  </script>
+</body>
+</html>
